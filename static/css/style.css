@@ -1,11 +1,43 @@
-body { margin: 0; background: #000; color: #fff; font-family: Arial; }
-canvas { display: block; }
-#stats { position: absolute; top: 10px; left: 10px; }
-button { position: absolute; bottom: 120px; width: 80px; height: 40px; }
+body {
+    margin: 0;
+    background: #000;
+    color: #fff;
+    font-family: Arial;
+}
+canvas {
+    display: block;
+}
+#stats {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+button {
+    position: absolute;
+    bottom: 120px;
+    width: 80px;
+    height: 40px;
+    cursor: pointer;
+    z-index: 10; /* Pastikan tombol di atas canvas */
+}
 button:nth-child(1) { left: 10px; }
 button:nth-child(2) { left: 100px; }
 button:nth-child(3) { left: 190px; }
-#login { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px; }
-#login + button { top: 60%; }
-h1 { text-align: center; }
-#stats p { margin: 5px; }
+button:nth-child(4) { left: 280px; } /* Tombol Dashboard */
+#login {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    text-align: center;
+}
+#login input {
+    margin: 10px;
+    padding: 5px;
+    font-size: 16px;
+}
+#login button {
+    position: static;
+    transform: none;
+}
