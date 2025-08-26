@@ -7,3 +7,5 @@ button:nth-child(2) { left: 100px; }
 button:nth-child(3) { left: 190px; }
 #login { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px; }
 #login + button { top: 60%; }
+h1 { text-align: center; }
+#stats p { margin: 5px; }
