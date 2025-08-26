@@ -7,7 +7,10 @@ function sendAction(action, x = 0, y = 0) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, x, y })
-    }).then(response => response.json()).then(data => console.log(data));
+    })
+    .then(response => response.json())
+    .then(data => console.log("Aksi dikirim:", data))
+    .catch(err => console.error("Error aksi:", err));
 }
 
 function sendSocialEngClick(clicked) {
@@ -15,11 +18,16 @@ function sendSocialEngClick(clicked) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clicked })
-    }).then(response => response.json()).then(data => console.log(data));
+    })
+    .then(response => response.json())
+    .then(data => console.log("Phishing click:", data))
+    .catch(err => console.error("Error phishing click:", err));
 }
 
 function draw() {
-    fetch("/update").then(response => response.json()).then(data => {
+    fetch("/update")
+    .then(response => response.json())
+    .then(data => {
         ctx.fillStyle = "green";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -56,7 +64,7 @@ function draw() {
             return;
         }
 
-        // Social engineering pop-up (Fitur 6)
+        // Social engineering pop-up
         if (data.social_eng_triggered) {
             ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
             ctx.fillRect(200, 400, 320, 200);
@@ -70,21 +78,11 @@ function draw() {
                 let y = e.clientY - rect.top;
                 if (x >= 200 && x <= 520 && y >= 400 && y <= 600) {
                     sendSocialEngClick(true);
-                    canvas.onclick = e => {
-                        let rect = canvas.getBoundingClientRect();
-                        let x = e.clientX - rect.left;
-                        let y = e.clientY - rect.top;
-                        sendAction("spawn", x, y);
-                    };
+                    canvas.onclick = handleCanvasClick;
                 }
             };
         } else {
-            canvas.onclick = e => {
-                let rect = canvas.getBoundingClientRect();
-                let x = e.clientX - rect.left;
-                let y = e.clientY - rect.top;
-                sendAction("spawn", x, y);
-            };
+            canvas.onclick = handleCanvasClick;
         }
 
         data.toxic_zones.forEach(zone => {
@@ -101,7 +99,7 @@ function draw() {
             ctx.fill();
         });
 
-        // Animasi packet sniffing (Fitur 3)
+        // Animasi packet sniffing
         data.ant_men.forEach(t => {
             if (t.packet_capture.length > 0 && t.rebel) {
                 let nearest_zone = data.toxic_zones.reduce((min, zone) => {
@@ -178,16 +176,22 @@ function draw() {
 
         let stats = `Ant-Man: ${data.ant_men.length} | Rebel: ${data.ant_men.filter(t => t.rebel).length} | Hidden: ${data.ant_men.filter(t => t.hidden).length} | Kerentanan: ${data.ant_men.filter(t => t.vuln_found).length} | Makanan: ${data.foods.length} | Rata-rata: H:${Math.round(data.ant_men.filter(t => !t.is_king).reduce((s, t) => s + t.hunger, 0) / (data.ant_men.length - 1 || 1))} Hap:${Math.round(data.ant_men.filter(t => !t.is_king).reduce((s, t) => s + t.happiness, 0) / (data.ant_men.length - 1 || 1))} E:${Math.round(data.ant_men.filter(t => !t.is_king).reduce((s, t) => s + t.energy, 0) / (data.ant_men.length - 1 || 1))}`;
         document.getElementById("stats").innerText = stats;
-    }).catch(err => console.error("Error fetching update:", err));
+    })
+    .catch(err => {
+        console.error("Error fetching update:", err);
+        document.getElementById("stats").innerText = "Error memuat data. Cek konsol browser.";
+    });
 
     requestAnimationFrame(draw);
 }
 
-canvas.addEventListener("click", e => {
+function handleCanvasClick(e) {
     let rect = canvas.getBoundingClientRect();
     let x = e.clientX - rect.left;
     let y = e.clientY - rect.top;
     sendAction("spawn", x, y);
-});
+}
+
+canvas.onclick = handleCanvasClick;
 
 draw();
