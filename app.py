@@ -14,6 +14,7 @@ inputs = []
 phishing = False
 takeover = False
 
+# Routes remain the same as in your previous code
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -84,7 +85,7 @@ def update():
         t["age"] += 1
 
         for zone in toxic_zones:
-            if math.hypot(zone["x"] - t["x"], zone["y"] - t["y"]) < zone["size"]:
+            if ((zone["x"] - t["x"])**2 + (zone["y"] - t["y"])**2)**0.5 < zone["size"]:
                 t["hunger"] -= 0.5
                 t["happiness"] -= 0.5
                 t["energy"] -= 0.5
@@ -115,8 +116,8 @@ def update():
 
         leader = max(ant_men, key=lambda t: t["age"] if t["evolved"] and not t["rebel"] else 0, default=None)
         if foods and t["hunger"] < 50 and not t["rebel"]:
-            nearest_food = min(foods, key=lambda f: math.hypot(f["x"] - t["x"], f["y"] - t["y"]))
-            dist = math.hypot(nearest_food["x"] - t["x"], nearest_food["y"] - t["y"])
+            nearest_food = min(foods, key=lambda f: ((f["x"] - t["x"])**2 + (f["y"] - t["y"])**2)**0.5)
+            dist = ((nearest_food["x"] - t["x"])**2 + (nearest_food["y"] - t["y"])**2)**0.5
             if dist < 20:
                 if nearest_food["toxic"]:
                     t["hunger"] -= 10
@@ -131,7 +132,7 @@ def update():
                 t["x"] += dx
                 t["y"] += dy
         elif leader and leader != t and not t["rebel"]:
-            dist = math.hypot(leader["x"] - t["x"], leader["y"] - t["y"])
+            dist = ((leader["x"] - t["x"])**2 + (leader["y"] - t["y"])**2)**0.5
             if dist > 30:
                 dx = (leader["x"] - t["x"]) / dist * 2
                 dy = (leader["y"] - t["y"]) / dist * 2
