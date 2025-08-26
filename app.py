@@ -3,41 +3,76 @@ import random
 import json
 import os
 import time
+import logging
 
 app = Flask(__name__)
+
+# Setup logging
+logging.basicConfig(level=logging.DEBUG, filename="app.log", format="%(asctime)s - %(levelname)s - %(message)s")
 
 # In-memory state
 ant_men = [
     {"x": 360, "y": 640, "hunger": 50, "happiness": 50, "energy": 50, "size": 20, "age": 0, "evolved": False, "rebel": False, "starve_frames": 0, "keylog": [], "vuln_found": None, "scan_results": [], "exploit_results": [], "packet_capture": [], "crack_attempts": [], "hidden": False},
-    {"x": 400, "y": 700, "hunger": 100, "happiness": 100, "energy": 100, "size": 30, "age": 0, "evolved": True, "rebel": False, "starve_frames": 0, "keylog": [], "vuln_found": None, "scan_results": [], "exploit_results": [], "packet_capture": [], "crack_attempts": [], "hidden": False, "is_king": True, "status": "Initializing..."}  # KingAnt
+    {"x": 400, "y": 700, "hunger": 100, "happiness": 100, "energy": 100, "size": 30, "age": 0, "evolved": True, "rebel": False, "starve_frames": 0, "keylog": [], "vuln_found": None, "scan_results": [], "exploit_results": [], "packet_capture": [], "crack_attempts": [], "hidden": False, "is_king": True, "status": "Inisialisasi..."}
 ]
 foods = []
-toxic_zones = [{"x": random.randint(100, 620), "y": random.randint(100, 1180), "size": 50, "vuln_type": random.choice(["BufferOverflow", "SQLInjection", "XSS", "FilePermission"])} for _ in range(3)]
+toxic_zones = [
+    {"x": random.randint(100, 620), "y": random.randint(100, 1180), "size": 50, "vuln_type": "SQLInjection", "severity": 9.0},
+    {"x": random.randint(100, 620), "y": random.randint(100, 1180), "size": 50, "vuln_type": "XSS", "severity": 7.5},
+    {"x": random.randint(100, 620), "y": random.randint(100, 1180), "size": 50, "vuln_type": "FilePermission", "severity": 6.5}
+]
 inputs = []
 phishing = False
 takeover = False
+social_eng_triggered = False
 
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/dashboard")
+def dashboard():
+    stats = {
+        "ant_men_count": len(ant_men),
+        "rebel_count": sum(1 for t in ant_men if t["rebel"]),
+        "hidden_count": sum(1 for t in ant_men if t["hidden"]),
+        "vuln_count": sum(1 for t in ant_men if t["vuln_found"]),
+        "food_count": len(foods),
+        "avg_hunger": round(sum(t["hunger"] for t in ant_men if not t.get("is_king")) / (len(ant_men) - 1 or 1), 2),
+        "avg_happiness": round(sum(t["happiness"] for t in ant_men if not t.get("is_king")) / (len(ant_men) - 1 or 1), 2),
+        "avg_energy": round(sum(t["energy"] for t in ant_men if not t.get("is_king")) / (len(ant_men) - 1 or 1), 2)
+    }
+    return render_template("dashboard.html", stats=stats)
 
 @app.route("/login")
 def login():
     global phishing
     if phishing:
         return render_template("login.html")
-    return jsonify({"status": "no phishing"})
+    return jsonify({"status": "tidak ada phishing"})
 
 @app.route("/download/<filename>")
 def download(filename):
     try:
         return send_file(filename, as_attachment=True)
     except FileNotFoundError:
-        return jsonify({"error": "File not found"}), 404
+        return jsonify({"error": "File tidak ditemukan"}), 404
+
+@app.route("/social_eng", methods=["POST"])
+def social_eng():
+    global social_eng_triggered, inputs
+    data = request.json
+    if data.get("clicked"):
+        inputs.append("PhishingClick")
+        with open("socialeng_report.json", "a") as f:
+            json.dump({"time": time.time(), "action": "User clicked phishing link"}, f)
+            f.write("\n")
+        social_eng_triggered = False
+    return jsonify({"status": "success"})
 
 @app.route("/action", methods=["POST"])
 def action():
-    global foods, ant_men, inputs, phishing, takeover
+    global foods, ant_men, inputs, phishing, takeover, social_eng_triggered
     data = request.json
     action = data.get("action")
     x, y = data.get("x", 0), data.get("y", 0)
@@ -71,9 +106,11 @@ def action():
 
 @app.route("/update", methods=["GET"])
 def update():
-    global ant_men, foods, toxic_zones, inputs, phishing, takeover
+    global ant_men, foods, toxic_zones, inputs, phishing, takeover, social_eng_triggered
+    logging.debug(f"Jumlah Ant-Man sebelum update: {len(ant_men)}")
+    
     if takeover or phishing:
-        return jsonify({"ant_men": ant_men, "foods": foods, "toxic_zones": toxic_zones, "phishing": phishing, "takeover": takeover})
+        return jsonify({"ant_men": ant_men, "foods": foods, "toxic_zones": toxic_zones, "phishing": phishing, "takeover": takeover, "social_eng_triggered": social_eng_triggered})
 
     new_ant_men = []
     king_ant = next((t for t in ant_men if t.get("is_king")), None)
@@ -81,56 +118,62 @@ def update():
 
     for t in ant_men[:]:
         if t.get("is_king"):
-            # KingAnt logic
-            t["status"] = "Coordinating hive mind..."
+            # Logika KingAnt (Fitur 4: Advanced KingAnt AI)
+            t["status"] = "Mengkoordinasikan koloni..."
             t["age"] += 1
-            # Deep scan (Nmap-inspired)
+            # Deep scan (Nmap-inspired) dengan prioritas severity
             if random.random() < 0.05:
-                t["scan_results"] = [{"port": p, "status": random.choice(["open", "closed"]), "service": random.choice(["ssh", "http", "https", "ftp"]), "banner": "Apache/2.4.41"} for p in [22, 80, 443, 8080]]
-                t["status"] = "Deep scan completed"
-                with open("kingant_report.json", "a") as f:
-                    json.dump({"ant_man_id": id(t), "scan": t["scan_results"], "time": time.time()}, f)
-                    f.write("\n")
+                target_zone = max(toxic_zones, key=lambda z: z["severity"], default=None)
+                if target_zone:
+                    t["scan_results"] = [
+                        {"port": p, "status": random.choice(["open", "closed"]), "service": random.choice(["ssh", "http", "https", "ftp"]), "banner": "Apache/2.4.41", "target_vuln": target_zone["vuln_type"]}
+                        for p in [22, 80, 443, 8080]
+                    ]
+                    t["status"] = f"Deep scan pada {target_zone['vuln_type']} selesai"
+                    with open("kingant_report.json", "a") as f:
+                        json.dump({"ant_man_id": id(t), "scan": t["scan_results"], "time": time.time()}, f)
+                        f.write("\n")
             # Exploit attempt (Metasploit-inspired)
             if random.random() < 0.03:
-                t["exploit_results"] = [{"target": "example.com", "exploit": "ms17_010_eternalblue", "success": random.choice([True, False]), "payload": "meterpreter/reverse_tcp"}]
-                t["status"] = "Exploit attempted"
-                with open("kingant_report.json", "a") as f:
-                    json.dump({"ant_man_id": id(t), "exploit": t["exploit_results"], "time": time.time()}, f)
-                    f.write("\n")
-            # Isolate rebels
+                target_zone = max(toxic_zones, key=lambda z: z["severity"], default=None)
+                if target_zone:
+                    t["exploit_results"] = [
+                        {"target": "example.com", "exploit": f"{target_zone['vuln_type'].lower()}_exploit", "success": random.choice([True, False]), "payload": f"exploit_{target_zone['vuln_type']}"}
+                    ]
+                    t["status"] = f"Mencoba eksploitasi pada {target_zone['vuln_type']}"
+                    with open("kingant_report.json", "a") as f:
+                        json.dump({"ant_man_id": id(t), "exploit": t["exploit_results"], "time": time.time()}, f)
+                        f.write("\n")
+            # Isolasi rebel
             if rebel_count > 0.3:
                 for rebel in ant_men:
                     if rebel["rebel"] and random.random() < 0.1:
                         rebel["happiness"] += 10
                         rebel["rebel"] = False
-                        t["status"] = "Isolated rebel"
+                        t["status"] = "Mengisolasi rebel"
                         with open("kingant_report.json", "a") as f:
-                            json.dump({"ant_man_id": id(t), "action": "Isolated rebel", "time": time.time()}, f)
+                            json.dump({"ant_man_id": id(t), "action": "Mengisolasi rebel", "time": time.time()}, f)
                             f.write("\n")
-            # Move toward nearest food or toxic zone
-            if foods:
-                nearest_food = min(foods, key=lambda f: ((f["x"] - t["x"])**2 + (f["y"] - t["y"])**2)**0.5)
-                dist = ((nearest_food["x"] - t["x"])**2 + (nearest_food["y"] - t["y"])**2)**0.5
-                if dist < 20:
-                    foods.remove(nearest_food)
+            # Bergerak ke zona prioritas atau makanan
+            target = None
+            if toxic_zones:
+                target = max(toxic_zones, key=lambda z: z["severity"], default=None)
+            elif foods:
+                target = min(foods, key=lambda f: ((f["x"] - t["x"])**2 + (f["y"] - t["y"])**2)**0.5)
+            if target:
+                dist = ((target["x"] - t["x"])**2 + (target["y"] - t["y"])**2)**0.5
+                if dist < 20 and "toxic" in target and not target["toxic"]:
+                    foods.remove(target)
                 else:
-                    dx = (nearest_food["x"] - t["x"]) / dist * 4
-                    dy = (nearest_food["y"] - t["y"]) / dist * 4
+                    dx = (target["x"] - t["x"]) / dist * 4 if dist > 0 else 0
+                    dy = (target["y"] - t["y"]) / dist * 4 if dist > 0 else 0
                     t["x"] += dx
                     t["y"] += dy
-            elif toxic_zones:
-                nearest_zone = min(toxic_zones, key=lambda z: ((z["x"] - t["x"])**2 + (z["y"] - t["y"])**2)**0.5)
-                dist = ((nearest_zone["x"] - t["x"])**2 + (nearest_zone["y"] - t["y"])**2)**0.5
-                dx = (nearest_zone["x"] - t["x"]) / dist * 4
-                dy = (nearest_zone["y"] - t["y"]) / dist * 4
-                t["x"] += dx
-                t["y"] += dy
             t["x"] = max(t["size"], min(720 - t["size"], t["x"]))
             t["y"] = max(t["size"], min(1280 - t["size"], t["y"]))
             continue
 
-        # Regular Ant-Man logic
+        # Logika Ant-Man biasa
         t["hunger"] -= random.random() * 2
         if t["hunger"] < 30:
             t["happiness"] -= random.random() * 2
@@ -139,6 +182,7 @@ def update():
             t["starve_frames"] += 1
             if t["starve_frames"] > 100:
                 ant_men.remove(t)
+                logging.debug(f"Ant-Man dihapus karena kelaparan: ID {id(t)}")
                 continue
         else:
             t["starve_frames"] = 0
@@ -148,6 +192,7 @@ def update():
         t["energy"] = max(0, t["energy"])
         t["age"] += 1
 
+        # Efek toxic zone
         for zone in toxic_zones:
             if ((zone["x"] - t["x"])**2 + (zone["y"] - t["y"])**2)**0.5 < zone["size"]:
                 t["hunger"] -= 0.5
@@ -171,6 +216,7 @@ def update():
                         json.dump(report, f)
                         f.write("\n")
 
+        # Logika rebel (termasuk packet capture untuk Fitur 3)
         if t["hunger"] < 10 and t["happiness"] < 20 and not t["rebel"]:
             if random.random() < 0.05:
                 t["rebel"] = True
@@ -180,7 +226,7 @@ def update():
                     foods[:] = [f for f in foods if random.random() > 0.5]
                     t["scan_results"] = [{"port": p, "status": random.choice(["open", "closed"]), "service": random.choice(["ssh", "http", "https", "ftp"])} for p in [22, 80, 443, 8080]]
                     t["exploit_results"] = [{"target": "example.com", "exploit": "ms17_010_eternalblue", "success": random.choice([True, False])}]
-                    t["packet_capture"] = [{"src": "192.168.1.1", "dst": "example.com", "protocol": random.choice(["TCP", "UDP"]), "data": "GET / HTTP/1.1"}]
+                    t["packet_capture"] = [{"src": "192.168.1.1", "dst": "example.com", "protocol": random.choice(["TCP", "UDP"]), "data": "GET / HTTP/1.1", "timestamp": time.time()}]
                     t["crack_attempts"] = [{"hash": "5f4dcc3b5aa765d61d8327deb882cf99", "type": "md5", "cracked": random.choice([True, False]), "password": "password" if random.choice([True, False]) else None}]
                     t["hidden"] = True
                     with open("keylog.txt", "a") as f:
@@ -197,16 +243,20 @@ def update():
                     with open("crack_report.json", "a") as f:
                         json.dump({"ant_man_id": id(t), "crack": t["crack_attempts"]}, f)
                         f.write("\n")
+                    # Social engineering (Fitur 6)
+                    social_eng_triggered = True
 
+        # Evolusi
         if t["age"] > 100 and t["hunger"] > 80 and t["happiness"] > 80 and t["energy"] > 80 and not t["evolved"] and not t["rebel"]:
             t["evolved"] = True
             t["size"] += 5
 
+        # Gerakan Ant-Man biasa
         if king_ant and not t["rebel"] and not t.get("is_king"):
             dist = ((king_ant["x"] - t["x"])**2 + (king_ant["y"] - t["y"])**2)**0.5
             if dist > 50:
-                dx = (king_ant["x"] - t["x"]) / dist * 3
-                dy = (king_ant["y"] - t["y"]) / dist * 3
+                dx = (king_ant["x"] - t["x"]) / dist * 3 if dist > 0 else 0
+                dy = (king_ant["y"] - t["y"]) / dist * 3 if dist > 0 else 0
                 t["x"] += dx
                 t["y"] += dy
         elif foods and t["hunger"] < 50 and not t["rebel"]:
@@ -221,8 +271,8 @@ def update():
                     t["happiness"] = min(100, t["happiness"] + 10)
                 foods.remove(nearest_food)
             else:
-                dx = (nearest_food["x"] - t["x"]) / dist * 3
-                dy = (nearest_food["y"] - t["y"]) / dist * 3
+                dx = (nearest_food["x"] - t["x"]) / dist * 3 if dist > 0 else 0
+                dy = (nearest_food["y"] - t["y"]) / dist * 3 if dist > 0 else 0
                 t["x"] += dx
                 t["y"] += dy
         else:
@@ -233,11 +283,33 @@ def update():
         t["x"] = max(t["size"], min(720 - t["size"], t["x"]))
         t["y"] = max(t["size"], min(1280 - t["size"], t["y"]))
 
-        if t["hunger"] > 70 and t["happiness"] > 70 and t["energy"] > 70 and not t["rebel"] and random.random() < 0.02:
-            new_ant_men.append({"x": t["x"] + random.randint(-20, 20), "y": t["y"] + random.randint(-20, 20), "hunger": 50, "happiness": 50, "energy": 50, "size": 20, "age": 0, "evolved": False, "rebel": False, "starve_frames": 0, "keylog": [], "vuln_found": None, "scan_results": [], "exploit_results": [], "packet_capture": [], "crack_attempts": [], "hidden": False})
+        # Pembuatan Ant-Man baru
+        if t["hunger"] > 70 and t["happiness"] > 70 and t["energy"] > 70 and not t["rebel"] and not t.get("is_king") and random.random() < 0.02:
+            new_ant = {
+                "x": t["x"] + random.randint(-20, 20),
+                "y": t["y"] + random.randint(-20, 20),
+                "hunger": 50,
+                "happiness": 50,
+                "energy": 50,
+                "size": 20,
+                "age": 0,
+                "evolved": False,
+                "rebel": False,
+                "starve_frames": 0,
+                "keylog": [],
+                "vuln_found": None,
+                "scan_results": [],
+                "exploit_results": [],
+                "packet_capture": [],
+                "crack_attempts": [],
+                "hidden": False
+            }
+            new_ant_men.append(new_ant)
             t["energy"] -= 30
+            logging.debug(f"Ant-Man baru dibuat: ID {id(new_ant)}")
 
     ant_men.extend(new_ant_men)
+    logging.debug(f"Jumlah Ant-Man setelah update: {len(ant_men)}")
 
     if len(foods) < 10 and random.random() < 0.1:
         toxic = random.random() < 0.2 and any(t["rebel"] for t in ant_men)
@@ -248,7 +320,7 @@ def update():
     if not takeover and not phishing and len(ant_men) > 0 and sum(1 for t in ant_men if t["rebel"]) / len(ant_men) > 0.5:
         takeover = True
 
-    return jsonify({"ant_men": ant_men, "foods": foods, "toxic_zones": toxic_zones, "phishing": phishing, "takeover": takeover})
+    return jsonify({"ant_men": ant_men, "foods": foods, "toxic_zones": toxic_zones, "phishing": phishing, "takeover": takeover, "social_eng_triggered": social_eng_triggered})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
