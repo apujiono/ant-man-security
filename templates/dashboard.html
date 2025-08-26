@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ant-Man Security Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Ant-Man Security Dashboard</h1>
+    <div id="stats">
+        <p>Jumlah Ant-Man: {{ stats.ant_men_count }}</p>
+        <p>Jumlah Rebel: {{ stats.rebel_count }}</p>
+        <p>Jumlah Hidden: {{ stats.hidden_count }}</p>
+        <p>Kerentanan Ditemukan: {{ stats.vuln_count }}</p>
+        <p>Jumlah Makanan: {{ stats.food_count }}</p>
+        <p>Rata-rata Hunger: {{ stats.avg_hunger }}</p>
+        <p>Rata-rata Happiness: {{ stats.avg_happiness }}</p>
+        <p>Rata-rata Energy: {{ stats.avg_energy }}</p>
+    </div>
+    <canvas id="vulnChart" width="400" height="200"></canvas>
+    <a href="/">Kembali ke Game</a>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
