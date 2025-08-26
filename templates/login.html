@@ -1,12 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>System Login</title>
+    <title>Ant-Man Phishing Simulation</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div id="login">System Login Required</div>
-    <button onclick="sendAction('login')">Login</button>
-    <script src="/static/js/game.js"></script>
+    <div id="login">
+        <h2>Simulasi Login Phishing</h2>
+        <form id="loginForm">
+            <input type="text" id="username" placeholder="Username" required><br><br>
+            <input type="password" id="password" placeholder="Password" required><br><br>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+    <script>
+        document.getElementById("loginForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            fetch("/action", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "login" })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    window.location.href = "/";
+                } else {
+                    alert("Login gagal! Ini simulasi phishing.");
+                }
+            })
+            .catch(err => {
+                console.error("Error login:", err);
+                alert("Error saat login. Cek konsol browser.");
+            });
+        });
+    </script>
 </body>
 </html>
